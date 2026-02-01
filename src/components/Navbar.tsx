@@ -6,20 +6,37 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 export default function Navbar() {
   const supabase = getSupabaseBrowserClient();
+
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadUser() {
+    let mounted = true;
+
+    async function load() {
       const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
       setEmail(data.user?.email ?? null);
       setLoading(false);
     }
-    loadUser();
+
+    load();
+
+    // ✅ This is the important part: updates navbar instantly on sign in/out
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, [supabase]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    // optional: push to home
     window.location.href = "/";
   }
 
@@ -37,19 +54,12 @@ export default function Navbar() {
 
           {!loading && email ? (
             <>
-              <Link
-                href="/author/upload"
-                className="rounded-md border px-3 py-2 hover:bg-muted"
-              >
+              <Link href="/author" className="rounded-md border px-3 py-2 hover:bg-muted">
+                Author Dashboard
+              </Link>
+              {/* <Link href="/author/upload" className="rounded-md border px-3 py-2 hover:bg-muted">
                 Upload Book
-              </Link>
-
-              <Link
-                href="/author/profile"
-                className="rounded-md border px-3 py-2 hover:bg-muted"
-              >
-                Author Profile
-              </Link>
+              </Link> */}
 
               <span className="text-muted-foreground">{email}</span>
 
