@@ -1,92 +1,101 @@
-import Link from "next/link";
-import { books } from "@/data/books";
+"use client";
 
-function formatLKR(amount: number) {
-  return new Intl.NumberFormat("en-LK", {
-    style: "currency",
-    currency: "LKR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
+import Image from "next/image";
 
-export default async function BookDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const book = books.find((b) => b.id === id);
 
-  if (!book) {
-    return (
-      <div className="space-y-3">
-        <h1 className="text-xl font-bold">Book not found</h1>
-        <Link href="/books" className="text-sm hover:underline">
-          Back to books
-        </Link>
-      </div>
-    );
-  }
+type BookDetail = {
+  id: string;
+  title: string;
+  description: string | null;
+  price_lkr: number;
+  allow_download: boolean;
+  cover_image_url: string | null;
+  pdf_url: string | null;
+};
+
+export default function BookDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const supabase = getSupabaseBrowserClient();
+
+  const [book, setBook] = useState<BookDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadBook() {
+      const { data, error } = await supabase
+        .from("books")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setBook(data);
+      }
+
+      setLoading(false);
+    }
+
+    loadBook();
+  }, [id, supabase]);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-600">{error}</p>;
+  if (!book) return <p>Book not found</p>;
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <Link href="/books" className="text-sm text-muted-foreground hover:underline">
-          ← Back to books
-        </Link>
-
-        <h1 className="text-3xl font-bold">{book.title}</h1>
-        <p className="text-sm text-muted-foreground">by {book.authorName}</p>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border px-3 py-1 text-xs">
-            {formatLKR(book.priceLKR)}
-          </span>
-          <span className="rounded-full border px-3 py-1 text-xs">
-            {book.allowDownload ? "Download allowed" : "View only"}
-          </span>
-          {book.tags.map((t) => (
-            <span key={t} className="rounded-full bg-muted px-3 py-1 text-xs">
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-3">
-          <h2 className="text-lg font-semibold">Description</h2>
-          <p className="text-sm text-muted-foreground">{book.description}</p>
-
-          <div className="rounded-xl border p-4">
-            <div className="text-sm font-semibold">Preview (UI placeholder)</div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Later we’ll render a PDF preview here (view-only mode).
-            </p>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        {book.cover_image_url ? (
+          <div className="relative h-64 w-full overflow-hidden rounded-xl">
+            <Image
+              src={book.cover_image_url}
+              alt={book.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
           </div>
-        </div>
+        ) : (
+          <div className="flex h-64 items-center justify-center rounded-xl bg-muted">
+            No cover
+          </div>
+        )}
 
-        <aside className="rounded-xl border p-5 space-y-3">
-          <h3 className="text-base font-semibold">Buy this book</h3>
+        <div className="space-y-3">
+          <h1 className="text-3xl font-bold">{book.title}</h1>
           <p className="text-sm text-muted-foreground">
-            {book.allowDownload
-              ? "After payment, you can download the PDF."
-              : "After payment, you can view the book online (no downloads)."}
+            Price: LKR {book.price_lkr}
+          </p>
+          <p className="text-sm">
+            Access: {book.allow_download ? "Download allowed" : "View only"}
           </p>
 
-          <button className="w-full rounded-md bg-black px-4 py-2 text-sm text-white hover:opacity-90">
-            Buy now
-          </button>
-
-          <button className="w-full rounded-md border px-4 py-2 text-sm hover:bg-muted">
-            Add to wishlist
-          </button>
-
-          <p className="text-xs text-muted-foreground">
-            Payment + download/view access will be connected when we build backend.
-          </p>
-        </aside>
+          {book.allow_download && book.pdf_url && (
+            <a
+              href={book.pdf_url}
+              target="_blank"
+              className="inline-block rounded-md bg-black px-4 py-2 text-sm text-white"
+            >
+              Download PDF
+            </a>
+          )}
+        </div>
       </div>
+
+      {book.description && (
+        <div>
+          <h2 className="font-semibold">Description</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {book.description}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
