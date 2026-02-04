@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { useAuthorGate } from "@/hooks/useAuthorGate";
+
 
 function parseTags(input: string) {
   return input
@@ -30,6 +32,18 @@ export default function AuthorUploadPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { checking, isAuthor } = useAuthorGate();
+
+
+  if (checking) {
+  return (
+    <div className="mx-auto max-w-xl rounded-xl border p-6 text-sm text-muted-foreground">
+      Checking author profile...
+    </div>
+  );
+  }
+
+  if (!isAuthor) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

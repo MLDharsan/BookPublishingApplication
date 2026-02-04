@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+
 const supabase = getSupabaseBrowserClient();
 
 export default function SignInPage() {
@@ -18,8 +20,8 @@ export default function SignInPage() {
     setError(null);
 
     const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      email,
+      password,
     });
 
     setLoading(false);
@@ -71,6 +73,17 @@ export default function SignInPage() {
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
+
+      {/* ✅ Link to Sign up */}
+      <p className="text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/auth/signup"
+          className="font-medium text-black hover:underline"
+        >
+          Sign up
+        </Link>
+      </p>
     </div>
   );
 }
