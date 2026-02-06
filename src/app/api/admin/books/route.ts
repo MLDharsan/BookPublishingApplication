@@ -1,28 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-async function requireAdmin(req: Request) {
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return { ok: false as const, status: 401 };
-
-  const { data: userData } = await supabaseAdmin.auth.getUser(token);
-  const user = userData?.user;
-  if (!user) return { ok: false as const, status: 401 };
-
-  const { data: adminRow } = await supabaseAdmin
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!adminRow) return { ok: false as const, status: 403 };
-  return { ok: true as const, userId: user.id };
-}
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
-  if (!auth.ok) return NextResponse.json({ error: "Forbidden" }, { status: auth.status });
+  if (!auth.ok) {
+    return NextResponse.json({ error: "Forbidden" }, { status: auth.status });
+  }
 
   const { data, error } = await supabaseAdmin
     .from("books")
